@@ -16,9 +16,11 @@ namespace Microsoft.SearchProvider.Bots.Clients
     //Replace it with the logic to get data from your data source.
     public class MyDataSourceServiceClient 
     {
-         public string MyDataSourceSearch(string endpoint, string query)
+         public async Task<string> MyDataSourceSearch(string endpoint, string query)
         {
+            // TODO Run the search to generate your answer.
             string responsePost = "This is a dummy response retrieved to this query: " + query + ", from the endpoint: " + endpoint + " using this search API " + Constants.SearchQueryApi;
+
             return responsePost;
         }
     }

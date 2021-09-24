@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-
-
 namespace Microsoft.SearchProvider.Bots
 {
     using Microsoft.AspNetCore.Builder;
@@ -11,9 +9,8 @@ namespace Microsoft.SearchProvider.Bots
     using Microsoft.Bot.Builder.Integration.AspNet.Core;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
-
-    //using Microsoft.SearchProvider.Bots;
     using Microsoft.Extensions.Hosting;
+
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -26,7 +23,7 @@ namespace Microsoft.SearchProvider.Bots
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddNewtonsoftJson();
+            services.AddHttpClient().AddControllers().AddNewtonsoftJson();
 
             // Create the Bot Framework Adapter with error handling enabled.
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();

@@ -2,64 +2,22 @@
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
-namespace Microsoft.SearchProvider.Bots.BotDialogs
+namespace Microsoft.SearchProvider.Bots
 {
+    using AdaptiveCards;
+    using EchoBot.Models;
+    using Microsoft.Bot.Builder;
+    using Microsoft.Bot.Schema;
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using AdaptiveCards;
-    using EchoBot.Models;
-    using Microsoft.Bot.Builder;
-    using Microsoft.Bot.Builder.Dialogs;
-    using Microsoft.Bot.Connector;
-    using Microsoft.Bot.Schema;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
-    
-
     using ErrorResponse = EchoBot.Models.ErrorResponse;
 
-    public enum AuthType
-    {
-        /// <summary>
-        /// For default
-        /// </summary>
-        Unknown = 0,
-
-        /// <summary>
-        /// OBO Token used for 3P skills.
-        /// </summary>
-        OBOToken = 2,
-    }
-    public class BotFrameworkAuthorizationToken
-    {
-        /// <summary>Initializes a new instance of the <see cref="BotFrameworkAuthorizationToken"/> class.</summary>
-        /// <param name="type">The authentication type.</param>
-        /// <param name="token">The token.</param>
-        public BotFrameworkAuthorizationToken(
-        AuthType type,
-        string token)
-        {
-            this.AuthType = type;
-            this.Token = token;
-        }
-
-        /// <summary>
-        /// Gets the domain.
-        /// </summary>
-        [JsonProperty("authType")]
-        public AuthType AuthType { get; }
-
-        /// <summary>
-        /// Gets the intent.
-        /// </summary>
-        [JsonProperty("token")]
-        public string Token { get; }
-    }
-
-    public class BotDialog : ComponentDialog
+    public static class SearchHelper
     {
         /// <summary>
         /// The type of the invoke response corresponding to an error
@@ -80,20 +38,9 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
         /// Layout ID of the search results
         /// </summary>
         private const string layoutId = "search_layout";
-        
-        //private readonly HttpClient httpClient;
-        
-        //public BotDialog(HttpClient client)
-        //{
-        //    this.httpClient = client ?? throw new ArgumentNullException(nameof(client));
-        //}
-
-        public BotDialog() : base(nameof(BotDialog))
-        {
-        }
 
         //This method is only for testing from Bot Emulator and Test in web chat (Azure Portal)
-        public static async Task SendDialog(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
+        public static async Task RunSearchForUser(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
 
             string json = Constants.Json;
@@ -101,10 +48,10 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
             IMessageActivity activity = turnContext.Activity;
 
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            string responsePost = MyDataSourceClient.MyDataSourceSearch(endpoint, activity.Text);
+            string responsePost = await MyDataSourceClient.MyDataSourceSearch(endpoint, activity.Text);
 
             activity.ChannelData = jObj;
-            
+
             activity.Speak = activity.Text;
             activity.InputHint = InputHints.ExpectingInput;
             activity.Attachments = new List<Attachment>();
@@ -119,7 +66,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                     Name = "SearchCard"
                 }
             );
-            
+
             IActivity a = (IActivity)activity;
             await turnContext.SendActivityAsync(a, cancellationToken);
             return;
@@ -132,23 +79,23 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
         /// <param name="turnContext">The turn context</param>
         /// <param name="cancellationToken">The cancellation token</param>
         /// <returns>The invoke response</returns>
-        internal static InvokeResponse SendDialogInInvokeResponse(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
+        internal static async Task<InvokeResponse> RunFederatedSearch(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
         {
-            BotFrameworkAuthorizationToken token = null;
-            if (turnContext.Activity.ChannelId=="searchassistant")
+            SearchBotAuthorizationToken token = null;
+            if (turnContext.Activity.ChannelId == "searchassistant")
             {
                 dynamic data = turnContext.Activity.ChannelData;
                 string traceId = string.Empty;
 
-                List<BotFrameworkAuthorizationToken> listOfTokens = new List<BotFrameworkAuthorizationToken>();
+                List<SearchBotAuthorizationToken> listOfTokens = new List<SearchBotAuthorizationToken>();
                 if (data != null && data.authorizations != null)
                 {
                     foreach (var a in data.authorizations)
                     {
-                        listOfTokens.Add(JsonConvert.DeserializeObject<BotFrameworkAuthorizationToken>(JsonConvert.SerializeObject(a)));
+                        listOfTokens.Add(JsonConvert.DeserializeObject<SearchBotAuthorizationToken>(JsonConvert.SerializeObject(a)));
                     }
 
-                    token = listOfTokens?.Where(item => item.AuthType == AuthType.OBOToken).FirstOrDefault();
+                    token = listOfTokens?.Where(item => item.AuthType == AuthTypes.OBOToken).FirstOrDefault();
                     traceId = data?.traceId;
                 }
 
@@ -185,10 +132,9 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                 };
             }
 
-            // Add here the logic to create the SearchResult with the data retireved from your data source
+            // Add here the logic to create the SearchResult with the data retrieved from your data source
             if (isVertical && (request.QueryOptions == null || request.QueryOptions.Top <= 0 || request.QueryOptions.Skip < 0))
             {
-
                 return new InvokeResponse
                 {
                     Status = 200,
@@ -212,12 +158,12 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
 
             string query = request.QueryText;
 
-            //Here the data from your data source is recieved.            
+            //Here the data from your data source is received.            
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            string responsePost = MyDataSourceClient.MyDataSourceSearch(endpoint, query);
+            string responsePost = await MyDataSourceClient.MyDataSourceSearch(endpoint, query);
 
             List<SearchResult> searchResults = new List<SearchResult>();
-            
+
             //Here the search result for Answer is created
             if (isAnswer)
             {
@@ -265,7 +211,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
             //Here the adaptive card for rendering the search results are created.
             AdaptiveCard adaptiveCard = new AdaptiveCard("1.0")
             {
-                Body = GetAdaptiveCard("Result text: {searchResultText}", isAnswer)               
+                Body = GetAdaptiveCard("Result text: {searchResultText}", isAnswer)
             };
 
             if (isVertical)
@@ -321,7 +267,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                         },
                         }),
                     }
-                };             
+                };
             }
             else
             {
@@ -342,7 +288,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
             }
         }
 
-        /// Create adaptive cards for redering search results.
+        /// Create adaptive cards for rendering search results.
         /// </summary>
         /// <param name="SearchResultText">Search result returned for the query.</param>
         /// <param name="isAnswer">The kind of search result to be rendered.</param>
@@ -359,14 +305,14 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                         Spacing = AdaptiveSpacing.None,
                         Separator = false,
                         Items = new List<AdaptiveElement>
-                        {                       
+                        {
                             new AdaptiveTextBlock
                             {
                                 Type = AdaptiveTextBlock.TypeName,
                                 Text = SearchResultText,
                                 Size = AdaptiveTextSize.Medium,
                                 Wrap = true
-                            }                            
+                            }
                         }
                     }
                 };
