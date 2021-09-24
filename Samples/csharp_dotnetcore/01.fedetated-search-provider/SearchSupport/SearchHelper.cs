@@ -40,7 +40,9 @@ namespace Microsoft.SearchProvider.Bots
         private const string layoutId = "search_layout";
 
         //This method is only for testing from Bot Emulator and Test in web chat (Azure Portal)
-        public static async Task RunSearchForUser(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
+        public static async Task RunSearchForUser(
+            ITurnContext<IMessageActivity> turnContext,
+            CancellationToken cancellationToken = default)
         {
 
             string json = Constants.Json;
@@ -79,7 +81,9 @@ namespace Microsoft.SearchProvider.Bots
         /// <param name="turnContext">The turn context</param>
         /// <param name="cancellationToken">The cancellation token</param>
         /// <returns>The invoke response</returns>
-        internal static async Task<InvokeResponse> RunFederatedSearch(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
+        internal static async Task<InvokeResponse> RunFederatedSearch(
+            ITurnContext<IInvokeActivity> turnContext,
+            CancellationToken cancellationToken = default)
         {
             SearchBotAuthorizationToken token = null;
             if (turnContext.Activity.ChannelId == "searchassistant")

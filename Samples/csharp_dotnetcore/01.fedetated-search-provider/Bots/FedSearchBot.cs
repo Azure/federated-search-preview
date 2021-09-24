@@ -24,14 +24,14 @@ namespace Microsoft.SearchProvider.Bots
             this.Logger = logger;
         }
 
-        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default(CancellationToken))
+        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
         {
             Logger.LogInformation($"ServiceUrl: { turnContext.Activity.ServiceUrl}");
             await base.OnTurnAsync(turnContext, cancellationToken);
         }
 
         //This is the function that will be called by the federated search provider.
-        protected override async Task<InvokeResponse> OnInvokeActivityAsync(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task<InvokeResponse> OnInvokeActivityAsync(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken = default)
         {
             if (string.Equals(InvokeName, turnContext.Activity.Name))
             {
@@ -44,12 +44,12 @@ namespace Microsoft.SearchProvider.Bots
         }
 
         //This method is only for testing from Bot Emulator and Test in web chat (Azure Portal)
-        protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken = default)
         {
             await SearchHelper.RunSearchForUser(turnContext, cancellationToken);
         }
 
-        protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken = default)
         {
             var welcomeText = Constants.WelcomeText;
             foreach (var member in membersAdded)
