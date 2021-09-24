@@ -6,19 +6,58 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using AdaptiveCards;
     using EchoBot.Models;
     using Microsoft.Bot.Builder;
     using Microsoft.Bot.Builder.Dialogs;
+    using Microsoft.Bot.Connector;
     using Microsoft.Bot.Schema;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     
 
     using ErrorResponse = EchoBot.Models.ErrorResponse;
-   
+
+    public enum AuthType
+    {
+        /// <summary>
+        /// For default
+        /// </summary>
+        Unknown = 0,
+
+        /// <summary>
+        /// OBO Token used for 3P skills.
+        /// </summary>
+        OBOToken = 2,
+    }
+    public class BotFrameworkAuthorizationToken
+    {
+        /// <summary>Initializes a new instance of the <see cref="BotFrameworkAuthorizationToken"/> class.</summary>
+        /// <param name="type">The authentication type.</param>
+        /// <param name="token">The token.</param>
+        public BotFrameworkAuthorizationToken(
+        AuthType type,
+        string token)
+        {
+            this.AuthType = type;
+            this.Token = token;
+        }
+
+        /// <summary>
+        /// Gets the domain.
+        /// </summary>
+        [JsonProperty("authType")]
+        public AuthType AuthType { get; }
+
+        /// <summary>
+        /// Gets the intent.
+        /// </summary>
+        [JsonProperty("token")]
+        public string Token { get; }
+    }
 
     public class BotDialog : ComponentDialog
     {
@@ -95,6 +134,27 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
         /// <returns>The invoke response</returns>
         internal static InvokeResponse SendDialogInInvokeResponse(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
         {
+            BotFrameworkAuthorizationToken token = null;
+            if (turnContext.Activity.ChannelId=="searchassistant")
+            {
+                dynamic data = turnContext.Activity.ChannelData;
+                string traceId = string.Empty;
+
+                List<BotFrameworkAuthorizationToken> listOfTokens = new List<BotFrameworkAuthorizationToken>();
+                if (data != null && data.authorizations != null)
+                {
+                    foreach (var a in data.authorizations)
+                    {
+                        listOfTokens.Add(JsonConvert.DeserializeObject<BotFrameworkAuthorizationToken>(JsonConvert.SerializeObject(a)));
+                    }
+
+                    token = listOfTokens?.Where(item => item.AuthType == AuthType.OBOToken).FirstOrDefault();
+                    traceId = data?.traceId;
+                }
+
+                // Use this token when you need to get information that requires user authentication.
+            }
+
             IInvokeActivity activity = turnContext.Activity;
             SearchRequest request = JObject.FromObject(activity.Value).ToObject<SearchRequest>();
 
