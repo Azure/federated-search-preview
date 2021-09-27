@@ -6,28 +6,26 @@ namespace Microsoft.SearchProvider.Bots
 {
     using Newtonsoft.Json;
 
-    /// <summary>Contains an authorization token to let the bot act on behalf of a user.</summary>
-    public class SearchBotAuthorizationToken
+    /// <summary>Contains an authentication token to let the bot act on behalf of a user.</summary>
+    public class SearchBotAuthenticationToken
     {
-        /// <summary>Initializes a new instance of the <see cref="SearchBotAuthorizationToken"/> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="SearchBotAuthenticationToken"/> class.</summary>
         /// <param name="type">The authentication type.</param>
-        /// <param name="token">The token.</param>
-        public SearchBotAuthorizationToken(
-            AuthTypes type,
-            string token)
+        /// <param name="token">The authentication token.</param>
+        public SearchBotAuthenticationToken(AuthenticationTypes type, string token)
         {
             this.AuthType = type;
             this.Token = token;
         }
 
         /// <summary>
-        /// Gets the domain.
+        /// Gets the authentication type.
         /// </summary>
         [JsonProperty("authType")]
-        public AuthTypes AuthType { get; }
+        public AuthenticationTypes AuthType { get; }
 
         /// <summary>
-        /// Gets the intent.
+        /// Gets the authentication token.
         /// </summary>
         [JsonProperty("token")]
         public string Token { get; }

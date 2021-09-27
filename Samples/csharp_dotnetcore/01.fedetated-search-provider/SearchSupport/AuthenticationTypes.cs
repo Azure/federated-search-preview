@@ -5,7 +5,7 @@
 namespace Microsoft.SearchProvider.Bots
 {
     /// <summary>Token types.</summary>
-    public enum AuthTypes
+    public enum AuthenticationTypes
     {
         /// <summary>
         /// For default

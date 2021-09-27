@@ -26,7 +26,7 @@ namespace Microsoft.SearchProvider.Bots.Clients
         /// <returns>The response information to the user's query.</returns>
          public async Task<ResponseObject> MyDataSourceSearch(
              string query,
-             SearchBotAuthorizationToken oboToken = null,
+             SearchBotAuthenticationToken oboToken = null,
              CancellationToken token = default)
         {
             // TODO Run the search to generate your answer.

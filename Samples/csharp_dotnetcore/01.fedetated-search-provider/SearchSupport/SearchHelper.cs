@@ -77,23 +77,23 @@ namespace Microsoft.SearchProvider.Bots
             return;
         }
 
-        private static SearchBotAuthorizationToken GetSearchOboToken(IInvokeActivity activity)
+        private static SearchBotAuthenticationToken GetSearchOboToken(IInvokeActivity activity)
         {
-            SearchBotAuthorizationToken token = null;
+            SearchBotAuthenticationToken token = null;
             if (activity.ChannelId == SearchChannelId)
             {
                 dynamic data = activity.ChannelData;
                 string traceId = null;
 
-                List<SearchBotAuthorizationToken> listOfTokens = new();
+                List<SearchBotAuthenticationToken> listOfTokens = new();
                 if (data?.authorizations != null)
                 {
                     foreach (var a in data.authorizations)
                     {
-                        listOfTokens.Add(JsonConvert.DeserializeObject<SearchBotAuthorizationToken>(JsonConvert.SerializeObject(a)));
+                        listOfTokens.Add(JsonConvert.DeserializeObject<SearchBotAuthenticationToken>(JsonConvert.SerializeObject(a)));
                     }
 
-                    token = listOfTokens?.Where(item => item.AuthType == AuthTypes.OBOToken).FirstOrDefault();
+                    token = listOfTokens?.Where(item => item.AuthType == AuthenticationTypes.OBOToken).FirstOrDefault();
                     traceId = data?.traceId;
                 }
 
