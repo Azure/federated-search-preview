@@ -20,26 +20,32 @@ namespace Microsoft.SearchProvider.Bots
     public static class SearchHelper
     {
         /// <summary>
-        /// The type of the invoke response corresponding to an error
+        /// The type of the invoke response corresponding to an error.
         /// </summary>
         private const string ErrorInvokeResponseType = Constants.ResponseErrorType;
 
         /// <summary>
-        /// The type of the invoke response corresponding to search results
+        /// The type of the invoke response corresponding to search results.
         /// </summary>
         private const string SearchInvokeResponseType = Constants.ResponseSuccessfulType;
 
         /// <summary>
-        /// Endpoint of the third-party data source, from where you want to get the search results. Replace it with the endpoint of your data source.
+        /// Endpoint of the third-party data source, from where you want to get the search results.
+        /// Replace it with the endpoint of your data source.
         /// </summary>
         private const string endpoint = Constants.Endpoint;
 
         /// <summary>
-        /// Layout ID of the search results
+        /// Layout ID of the search results.
         /// </summary>
         private const string layoutId = "search_layout";
 
-        //This method is only for testing from Bot Emulator and Test in web chat (Azure Portal)
+        /// <summary>
+        /// ID of the search channel.
+        /// </summary>
+        private const string SearchChannelId = "searchassistant";
+
+        //This method is only for testing from Bot Emulator and in Web Chat (in Azure portal).
         public static async Task RunSearchForUser(
             ITurnContext<IMessageActivity> turnContext,
             CancellationToken cancellationToken = default)
@@ -56,8 +62,8 @@ namespace Microsoft.SearchProvider.Bots
 
             activity.Speak = activity.Text;
             activity.InputHint = InputHints.ExpectingInput;
-            activity.Attachments = new List<Attachment>();
-            activity.Attachments.Add(
+            activity.Attachments = new List<Attachment>
+            {
                 new Attachment
                 {
                     Content = new AdaptiveCard("1.0")
@@ -67,31 +73,22 @@ namespace Microsoft.SearchProvider.Bots
                     ContentType = AdaptiveCard.ContentType,
                     Name = "SearchCard"
                 }
-            );
+            };
 
             IActivity a = (IActivity)activity;
             await turnContext.SendActivityAsync(a, cancellationToken);
             return;
         }
 
-        //This is the function creates the search response that will be send by the federated search provider.
-        /// <summary>
-        /// Returns an invoke response for the latest version of the search protocol
-        /// </summary>
-        /// <param name="turnContext">The turn context</param>
-        /// <param name="cancellationToken">The cancellation token</param>
-        /// <returns>The invoke response</returns>
-        internal static async Task<InvokeResponse> RunFederatedSearch(
-            ITurnContext<IInvokeActivity> turnContext,
-            CancellationToken cancellationToken = default)
+        private static SearchBotAuthorizationToken GetSearchOboToken(IInvokeActivity activity)
         {
             SearchBotAuthorizationToken token = null;
-            if (turnContext.Activity.ChannelId == "searchassistant")
+            if (activity.ChannelId == SearchChannelId)
             {
-                dynamic data = turnContext.Activity.ChannelData;
+                dynamic data = activity.ChannelData;
                 string traceId = string.Empty;
 
-                List<SearchBotAuthorizationToken> listOfTokens = new List<SearchBotAuthorizationToken>();
+                List<SearchBotAuthorizationToken> listOfTokens = new();
                 if (data != null && data.authorizations != null)
                 {
                     foreach (var a in data.authorizations)
@@ -102,12 +99,27 @@ namespace Microsoft.SearchProvider.Bots
                     token = listOfTokens?.Where(item => item.AuthType == AuthTypes.OBOToken).FirstOrDefault();
                     traceId = data?.traceId;
                 }
-
-                // Use this token when you need to get information that requires user authentication.
             }
 
+            return token;
+        }
+
+        /// <summary>
+        /// Returns an invoke response for the latest version of the search protocol
+        /// </summary>
+        /// <param name="turnContext">The turn context</param>
+        /// <param name="cancellationToken">The cancellation token</param>
+        /// <returns>The invoke response</returns>
+        /// <remarks>This method creates the search response for the federated search provider.</remarks>
+        internal static async Task<InvokeResponse> RunFederatedSearch(
+            ITurnContext<IInvokeActivity> turnContext,
+            CancellationToken cancellationToken = default)
+        {
             IInvokeActivity activity = turnContext.Activity;
             SearchRequest request = JObject.FromObject(activity.Value).ToObject<SearchRequest>();
+
+            // Use this token when you need to get information that requires user authentication.
+            var token = GetSearchOboToken(activity);
 
             //Here is identified whether the search results will be displayed in a custom vertical tab.
             bool isVertical = string.Equals("search", request.Kind, StringComparison.OrdinalIgnoreCase);
@@ -166,7 +178,7 @@ namespace Microsoft.SearchProvider.Bots
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
             string responsePost = await MyDataSourceClient.MyDataSourceSearch(endpoint, query);
 
-            List<SearchResult> searchResults = new List<SearchResult>();
+            List<SearchResult> searchResults = new();
 
             //Here the search result for Answer is created
             if (isAnswer)
@@ -213,7 +225,7 @@ namespace Microsoft.SearchProvider.Bots
             }
 
             //Here the adaptive card for rendering the search results are created.
-            AdaptiveCard adaptiveCard = new AdaptiveCard("1.0")
+            AdaptiveCard adaptiveCard = new("1.0")
             {
                 Body = GetAdaptiveCard("Result text: {searchResultText}", isAnswer)
             };

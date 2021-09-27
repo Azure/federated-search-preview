@@ -12,7 +12,6 @@ namespace EchoBot.Models
     /// The search response, which is returned in the body of
     /// the response to the invoke activity sent to a search results or answers provider
     /// </summary>
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly", Justification = "JSON class")]
     public class SearchResponse
     {
         /// <summary>

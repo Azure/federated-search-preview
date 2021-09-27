@@ -17,7 +17,7 @@ namespace Microsoft.SearchProvider.Bots
         /// </summary>
         private const string InvokeName = Constants.ApplicationSearchVersion;
 
-        private ILogger Logger;
+        private ILogger Logger { get; }
 
         public FedSearchBot(ILogger<FedSearchBot> logger)
         {
