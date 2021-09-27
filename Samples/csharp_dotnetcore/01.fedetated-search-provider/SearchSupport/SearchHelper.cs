@@ -8,11 +8,14 @@ namespace Microsoft.SearchProvider.Bots
     using EchoBot.Models;
     using Microsoft.Bot.Builder;
     using Microsoft.Bot.Schema;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.SearchProvider.Bots.Clients;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using ErrorResponse = EchoBot.Models.ErrorResponse;
@@ -28,12 +31,6 @@ namespace Microsoft.SearchProvider.Bots
         /// The type of the invoke response corresponding to search results.
         /// </summary>
         private const string SearchInvokeResponseType = Constants.ResponseSuccessfulType;
-
-        /// <summary>
-        /// Endpoint of the third-party data source, from where you want to get the search results.
-        /// Replace it with the endpoint of your data source.
-        /// </summary>
-        private const string endpoint = Constants.Endpoint;
 
         /// <summary>
         /// Layout ID of the search results.
@@ -56,7 +53,7 @@ namespace Microsoft.SearchProvider.Bots
             IMessageActivity activity = turnContext.Activity;
 
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            string responsePost = await MyDataSourceClient.MyDataSourceSearch(endpoint, activity.Text);
+            var responsePost = await MyDataSourceClient.MyDataSourceSearch(activity.Text);
 
             activity.ChannelData = jObj;
 
@@ -86,10 +83,10 @@ namespace Microsoft.SearchProvider.Bots
             if (activity.ChannelId == SearchChannelId)
             {
                 dynamic data = activity.ChannelData;
-                string traceId = string.Empty;
+                string traceId = null;
 
                 List<SearchBotAuthorizationToken> listOfTokens = new();
-                if (data != null && data.authorizations != null)
+                if (data?.authorizations != null)
                 {
                     foreach (var a in data.authorizations)
                     {
@@ -98,6 +95,12 @@ namespace Microsoft.SearchProvider.Bots
 
                     token = listOfTokens?.Where(item => item.AuthType == AuthTypes.OBOToken).FirstOrDefault();
                     traceId = data?.traceId;
+                }
+
+                if (traceId != null)
+                {
+                    // The trace ID is a GUID that identifies the request.
+                    // You can use this ID when you log debugging information.
                 }
             }
 
@@ -119,7 +122,7 @@ namespace Microsoft.SearchProvider.Bots
             SearchRequest request = JObject.FromObject(activity.Value).ToObject<SearchRequest>();
 
             // Use this token when you need to get information that requires user authentication.
-            var token = GetSearchOboToken(activity);
+            var oboToken = GetSearchOboToken(activity);
 
             //Here is identified whether the search results will be displayed in a custom vertical tab.
             bool isVertical = string.Equals("search", request.Kind, StringComparison.OrdinalIgnoreCase);
@@ -172,11 +175,11 @@ namespace Microsoft.SearchProvider.Bots
                 upperIndex = request.QueryOptions.Skip + request.QueryOptions.Top - 1;
             }
 
-            string query = request.QueryText;
+            string queryString = request.QueryText;
 
             //Here the data from your data source is received.            
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            string responsePost = await MyDataSourceClient.MyDataSourceSearch(endpoint, query);
+            var responsePost = await MyDataSourceClient.MyDataSourceSearch(queryString, oboToken, cancellationToken);
 
             List<SearchResult> searchResults = new();
 
@@ -189,7 +192,7 @@ namespace Microsoft.SearchProvider.Bots
                     LayoutId = layoutId,
                     Data = new SearchResultData()
                     {
-                        SearchResultText = responsePost,
+                        SearchResultText = responsePost.ResponseText,
                     },
                 });
             }
@@ -227,7 +230,7 @@ namespace Microsoft.SearchProvider.Bots
             //Here the adaptive card for rendering the search results are created.
             AdaptiveCard adaptiveCard = new("1.0")
             {
-                Body = GetAdaptiveCard("Result text: {searchResultText}", isAnswer)
+                Body = GetAdaptiveCard(responsePost, isAnswer)
             };
 
             if (isVertical)
@@ -304,12 +307,15 @@ namespace Microsoft.SearchProvider.Bots
             }
         }
 
+        /// <summary>
         /// Create adaptive cards for rendering search results.
         /// </summary>
-        /// <param name="SearchResultText">Search result returned for the query.</param>
+        /// <param name="response">Search result returned for the query.</param>
         /// <param name="isAnswer">The kind of search result to be rendered.</param>
         /// <returns>Returns Adaptive element</returns>
-        private static List<AdaptiveElement> GetAdaptiveCard(string SearchResultText, bool isAnswer)
+        /// <remarks>The response format for a vertical is different from that for an answer.
+        /// You will need to format your query results based on the shape of your response object.</remarks>
+        private static List<AdaptiveElement> GetAdaptiveCard(ResponseObject response, bool isAnswer)
         {
             //Adaptive card for verticals
             if (!isAnswer)
@@ -325,7 +331,7 @@ namespace Microsoft.SearchProvider.Bots
                             new AdaptiveTextBlock
                             {
                                 Type = AdaptiveTextBlock.TypeName,
-                                Text = SearchResultText,
+                                Text = response.ResponseText,
                                 Size = AdaptiveTextSize.Medium,
                                 Wrap = true
                             }
@@ -365,7 +371,7 @@ namespace Microsoft.SearchProvider.Bots
                             new AdaptiveTextBlock
                             {
                                 Type = AdaptiveTextBlock.TypeName,
-                                Text = SearchResultText,
+                                Text = response.ResponseText,
                                 Size = AdaptiveTextSize.Medium,
                                 Color = AdaptiveTextColor.Dark,
                                 Wrap = true
