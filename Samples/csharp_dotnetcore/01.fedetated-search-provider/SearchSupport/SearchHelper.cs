@@ -77,13 +77,15 @@ namespace Microsoft.SearchProvider.Bots
             return;
         }
 
+        /// <summary>Gets the Search channel on-behalf-of token.</summary>
+        /// <param name="activity">The invoke activity that contains the user query from the Search channel.</param>
+        /// <returns>The token for your bot.</returns>
         private static SearchBotAuthenticationToken GetSearchOboToken(IInvokeActivity activity)
         {
             SearchBotAuthenticationToken token = null;
             if (activity.ChannelId == SearchChannelId)
             {
                 dynamic data = activity.ChannelData;
-                string traceId = null;
 
                 List<SearchBotAuthenticationToken> listOfTokens = new();
                 if (data?.authorizations != null)
@@ -94,17 +96,26 @@ namespace Microsoft.SearchProvider.Bots
                     }
 
                     token = listOfTokens?.Where(item => item.AuthType == AuthenticationTypes.OBOToken).FirstOrDefault();
-                    traceId = data?.traceId;
-                }
-
-                if (traceId != null)
-                {
-                    // The trace ID is a GUID that identifies the request.
-                    // You can use this ID when you log debugging information.
                 }
             }
 
             return token;
+        }
+        /// <summary>Gets the Search channel trace ID from the activity.</summary>
+        /// <param name="activity">The invoke activity that contains the user query from the Search channel.</param>
+        /// <returns>The trace ID assigned by the Search channel.</returns>
+        /// <remarks>The trace ID is a GUID that identifies the request.
+        /// You can use this ID when you log debugging information.</remarks>
+        private static string GetSearchTraceId(IInvokeActivity activity)
+        {
+            if (activity.ChannelId == SearchChannelId)
+            {
+                return activity.ChannelData?.traceId;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         /// <summary>
