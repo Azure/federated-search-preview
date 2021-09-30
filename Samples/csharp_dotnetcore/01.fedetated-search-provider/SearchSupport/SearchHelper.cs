@@ -2,59 +2,50 @@
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
-namespace Microsoft.SearchProvider.Bots.BotDialogs
+namespace Microsoft.SearchProvider.Bots
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Threading;
-    using System.Threading.Tasks;
     using AdaptiveCards;
     using EchoBot.Models;
     using Microsoft.Bot.Builder;
-    using Microsoft.Bot.Builder.Dialogs;
     using Microsoft.Bot.Schema;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.SearchProvider.Bots.Clients;
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
-    
-
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
     using ErrorResponse = EchoBot.Models.ErrorResponse;
-   
 
-    public class BotDialog : ComponentDialog
+    public static class SearchHelper
     {
         /// <summary>
-        /// The type of the invoke response corresponding to an error
+        /// The type of the invoke response corresponding to an error.
         /// </summary>
         private const string ErrorInvokeResponseType = Constants.ResponseErrorType;
 
         /// <summary>
-        /// The type of the invoke response corresponding to search results
+        /// The type of the invoke response corresponding to search results.
         /// </summary>
         private const string SearchInvokeResponseType = Constants.ResponseSuccessfulType;
 
         /// <summary>
-        /// Endpoint of the third-party data source, from where you want to get the search results. Replace it with the endpoint of your data source.
-        /// </summary>
-        private const string endpoint = Constants.Endpoint;
-
-        /// <summary>
-        /// Layout ID of the search results
+        /// Layout ID of the search results.
         /// </summary>
         private const string layoutId = "search_layout";
-        
-        //private readonly HttpClient httpClient;
-        
-        //public BotDialog(HttpClient client)
-        //{
-        //    this.httpClient = client ?? throw new ArgumentNullException(nameof(client));
-        //}
 
-        public BotDialog() : base(nameof(BotDialog))
-        {
-        }
+        /// <summary>
+        /// ID of the search channel.
+        /// </summary>
+        private const string SearchChannelId = "searchassistant";
 
-        //This method is only for testing from Bot Emulator and Test in web chat (Azure Portal)
-        public static async Task SendDialog(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
+        //This method is only for testing from Bot Emulator and in Web Chat (in Azure portal).
+        public static async Task RunSearchForUser(
+            ITurnContext<IMessageActivity> turnContext,
+            CancellationToken cancellationToken = default)
         {
 
             string json = Constants.Json;
@@ -62,14 +53,14 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
             IMessageActivity activity = turnContext.Activity;
 
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            string responsePost = MyDataSourceClient.MyDataSourceSearch(endpoint, activity.Text);
+            var responsePost = await MyDataSourceClient.MyDataSourceSearch(activity.Text);
 
             activity.ChannelData = jObj;
-            
+
             activity.Speak = activity.Text;
             activity.InputHint = InputHints.ExpectingInput;
-            activity.Attachments = new List<Attachment>();
-            activity.Attachments.Add(
+            activity.Attachments = new List<Attachment>
+            {
                 new Attachment
                 {
                     Content = new AdaptiveCard("1.0")
@@ -79,24 +70,70 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                     ContentType = AdaptiveCard.ContentType,
                     Name = "SearchCard"
                 }
-            );
-            
+            };
+
             IActivity a = (IActivity)activity;
             await turnContext.SendActivityAsync(a, cancellationToken);
             return;
         }
 
-        //This is the function creates the search response that will be send by the federated search provider.
+        /// <summary>Gets the Search channel on-behalf-of token.</summary>
+        /// <param name="activity">The invoke activity that contains the user query from the Search channel.</param>
+        /// <returns>The token for your bot.</returns>
+        private static SearchBotAuthenticationToken GetSearchOboToken(IInvokeActivity activity)
+        {
+            SearchBotAuthenticationToken token = null;
+            if (activity.ChannelId == SearchChannelId)
+            {
+                dynamic data = activity.ChannelData;
+
+                List<SearchBotAuthenticationToken> listOfTokens = new();
+                if (data?.authorizations != null)
+                {
+                    foreach (var a in data.authorizations)
+                    {
+                        listOfTokens.Add(JsonConvert.DeserializeObject<SearchBotAuthenticationToken>(JsonConvert.SerializeObject(a)));
+                    }
+
+                    token = listOfTokens?.Where(item => item.AuthType == AuthenticationTypes.OBOToken).FirstOrDefault();
+                }
+            }
+
+            return token;
+        }
+        /// <summary>Gets the Search channel trace ID from the activity.</summary>
+        /// <param name="activity">The invoke activity that contains the user query from the Search channel.</param>
+        /// <returns>The trace ID assigned by the Search channel.</returns>
+        /// <remarks>The trace ID is a GUID that identifies the request.
+        /// You can use this ID when you log debugging information.</remarks>
+        private static string GetSearchTraceId(IInvokeActivity activity)
+        {
+            if (activity.ChannelId == SearchChannelId)
+            {
+                return activity.ChannelData?.traceId;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// Returns an invoke response for the latest version of the search protocol
         /// </summary>
         /// <param name="turnContext">The turn context</param>
         /// <param name="cancellationToken">The cancellation token</param>
         /// <returns>The invoke response</returns>
-        internal static InvokeResponse SendDialogInInvokeResponse(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
+        /// <remarks>This method creates the search response for the federated search provider.</remarks>
+        internal static async Task<InvokeResponse> RunFederatedSearch(
+            ITurnContext<IInvokeActivity> turnContext,
+            CancellationToken cancellationToken = default)
         {
             IInvokeActivity activity = turnContext.Activity;
             SearchRequest request = JObject.FromObject(activity.Value).ToObject<SearchRequest>();
+
+            // Use this token when you need to get information that requires user authentication.
+            var oboToken = GetSearchOboToken(activity);
 
             //Here is identified whether the search results will be displayed in a custom vertical tab.
             bool isVertical = string.Equals("search", request.Kind, StringComparison.OrdinalIgnoreCase);
@@ -125,10 +162,9 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                 };
             }
 
-            // Add here the logic to create the SearchResult with the data retireved from your data source
+            // Add here the logic to create the SearchResult with the data retrieved from your data source
             if (isVertical && (request.QueryOptions == null || request.QueryOptions.Top <= 0 || request.QueryOptions.Skip < 0))
             {
-
                 return new InvokeResponse
                 {
                     Status = 200,
@@ -150,14 +186,14 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                 upperIndex = request.QueryOptions.Skip + request.QueryOptions.Top - 1;
             }
 
-            string query = request.QueryText;
+            string queryString = request.QueryText;
 
-            //Here the data from your data source is recieved.            
+            //Here the data from your data source is received.            
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            string responsePost = MyDataSourceClient.MyDataSourceSearch(endpoint, query);
+            var responsePost = await MyDataSourceClient.MyDataSourceSearch(queryString, oboToken, cancellationToken);
 
-            List<SearchResult> searchResults = new List<SearchResult>();
-            
+            List<SearchResult> searchResults = new();
+
             //Here the search result for Answer is created
             if (isAnswer)
             {
@@ -167,7 +203,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                     LayoutId = layoutId,
                     Data = new SearchResultData()
                     {
-                        SearchResultText = responsePost,
+                        SearchResultText = responsePost.ResponseText,
                     },
                 });
             }
@@ -203,9 +239,9 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
             }
 
             //Here the adaptive card for rendering the search results are created.
-            AdaptiveCard adaptiveCard = new AdaptiveCard("1.0")
+            AdaptiveCard adaptiveCard = new("1.0")
             {
-                Body = GetAdaptiveCard("Result text: {searchResultText}", isAnswer)               
+                Body = GetAdaptiveCard(responsePost, isAnswer)
             };
 
             if (isVertical)
@@ -261,7 +297,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                         },
                         }),
                     }
-                };             
+                };
             }
             else
             {
@@ -282,12 +318,15 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
             }
         }
 
-        /// Create adaptive cards for redering search results.
+        /// <summary>
+        /// Create adaptive cards for rendering search results.
         /// </summary>
-        /// <param name="SearchResultText">Search result returned for the query.</param>
+        /// <param name="response">Search result returned for the query.</param>
         /// <param name="isAnswer">The kind of search result to be rendered.</param>
         /// <returns>Returns Adaptive element</returns>
-        private static List<AdaptiveElement> GetAdaptiveCard(string SearchResultText, bool isAnswer)
+        /// <remarks>The response format for a vertical is different from that for an answer.
+        /// You will need to format your query results based on the shape of your response object.</remarks>
+        private static List<AdaptiveElement> GetAdaptiveCard(ResponseObject response, bool isAnswer)
         {
             //Adaptive card for verticals
             if (!isAnswer)
@@ -299,14 +338,14 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                         Spacing = AdaptiveSpacing.None,
                         Separator = false,
                         Items = new List<AdaptiveElement>
-                        {                       
+                        {
                             new AdaptiveTextBlock
                             {
                                 Type = AdaptiveTextBlock.TypeName,
-                                Text = SearchResultText,
+                                Text = response.ResponseText,
                                 Size = AdaptiveTextSize.Medium,
                                 Wrap = true
-                            }                            
+                            }
                         }
                     }
                 };
@@ -343,7 +382,7 @@ namespace Microsoft.SearchProvider.Bots.BotDialogs
                             new AdaptiveTextBlock
                             {
                                 Type = AdaptiveTextBlock.TypeName,
-                                Text = SearchResultText,
+                                Text = response.ResponseText,
                                 Size = AdaptiveTextSize.Medium,
                                 Color = AdaptiveTextColor.Dark,
                                 Wrap = true

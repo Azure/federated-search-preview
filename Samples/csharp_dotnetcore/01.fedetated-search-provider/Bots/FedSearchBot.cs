@@ -3,13 +3,13 @@
 
 namespace Microsoft.SearchProvider.Bots
 {
-    using System.Collections.Generic;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Microsoft.SearchProvider.Bots.BotDialogs;
     using Microsoft.Bot.Builder;
     using Microsoft.Bot.Schema;
     using Microsoft.Extensions.Logging;
+    using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
+
     public class FedSearchBot : ActivityHandler
     {
         /// <summary>
@@ -17,38 +17,39 @@ namespace Microsoft.SearchProvider.Bots
         /// </summary>
         private const string InvokeName = Constants.ApplicationSearchVersion;
 
-        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            Logger.LogInformation($"ServiceUrl: { turnContext.Activity.ServiceUrl}");
-            await base.OnTurnAsync(turnContext, cancellationToken);
-        }
+        private ILogger Logger { get; }
 
-        private ILogger Logger;
         public FedSearchBot(ILogger<FedSearchBot> logger)
         {
             this.Logger = logger;
         }
 
+        public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
+        {
+            Logger.LogInformation($"ServiceUrl: { turnContext.Activity.ServiceUrl}");
+            await base.OnTurnAsync(turnContext, cancellationToken);
+        }
+
         //This is the function that will be called by the federated search provider.
-        protected override Task<InvokeResponse> OnInvokeActivityAsync(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task<InvokeResponse> OnInvokeActivityAsync(ITurnContext<IInvokeActivity> turnContext, CancellationToken cancellationToken = default)
         {
             if (string.Equals(InvokeName, turnContext.Activity.Name))
             {
-                return Task.FromResult(BotDialog.SendDialogInInvokeResponse(turnContext, cancellationToken));
+                return await SearchHelper.RunFederatedSearch(turnContext, cancellationToken);
             }
             else
             {
-                return Task.FromResult<InvokeResponse>(null); 
+                return null;
             }
         }
 
         //This method is only for testing from Bot Emulator and Test in web chat (Azure Portal)
-        protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken = default)
         {
-            await BotDialog.SendDialog(turnContext, cancellationToken);
+            await SearchHelper.RunSearchForUser(turnContext, cancellationToken);
         }
 
-        protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
+        protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken = default)
         {
             var welcomeText = Constants.WelcomeText;
             foreach (var member in membersAdded)

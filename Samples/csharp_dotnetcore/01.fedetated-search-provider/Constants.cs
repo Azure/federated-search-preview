@@ -45,10 +45,6 @@ namespace Microsoft.SearchProvider.Bots
 
         public const string AdaptiveCardTemplateNameVertical = "MyCardVertical.json";
 
-        public const string Endpoint = "My_Endpoint";
-
-        public const string SearchQueryApi = "My_Search_API";
-
         public const string DefaultOutput = "no data";
 
         public const int MaxFieldsPerColumn = 2;
