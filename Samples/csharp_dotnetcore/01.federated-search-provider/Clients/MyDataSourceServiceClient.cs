@@ -30,7 +30,8 @@ namespace Microsoft.SearchProvider.Bots.Clients
              CancellationToken token = default)
         {
             // TODO Run the search to generate your answer.
-            return new ResponseObject { ResponseText = "This is a dummy response retrieved to this query: " + query };
+            string wasTokenFound = oboToken == null ? "not found" : "found";
+            return new ResponseObject { ResponseText = "This is a dummy response retrieved to this query: " + query + " and the token was " + wasTokenFound };
         }
     }
 }
