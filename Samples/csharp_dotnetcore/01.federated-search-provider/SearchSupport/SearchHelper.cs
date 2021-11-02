@@ -92,7 +92,7 @@ namespace Microsoft.SearchProvider.Bots
                 {
                     foreach (var a in data.authorizations)
                     {
-                        listOfTokens.Add(JsonConvert.DeserializeObject<SearchBotAuthenticationToken>(JsonConvert.SerializeObject(a)));
+                        listOfTokens.Add(new SearchBotAuthenticationToken((AuthenticationTypes)a.authType, (string)a.token));
                     }
 
                     token = listOfTokens?.Where(item => item.AuthType == AuthenticationTypes.OBOToken).FirstOrDefault();
