@@ -1,4 +1,4 @@
-﻿// <copyright file="AuthModel.cs" company="Microsoft">
+// <copyright file="AuthModel.cs" company="Microsoft">
 //   Copyright (c) Microsoft Corporation.  All rights reserved.
 // </copyright>
 
@@ -13,11 +13,6 @@ namespace Microsoft.SearchProvider.Bots
     /// </summary>
     public class AuthModel
     {
-        /// <summary>
-        /// The epoch value.
-        /// </summary>
-        // General
-        public static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AuthModel"/> class.
@@ -29,7 +24,6 @@ namespace Microsoft.SearchProvider.Bots
         {
             this.Token = token;
             this.ResourceId = resourceId;
-            this.Expiration = (long)(expiration - Epoch).TotalMilliseconds;
             this.ExpiresOn = expiration;
         }
 
@@ -37,11 +31,6 @@ namespace Microsoft.SearchProvider.Bots
         /// Gets or sets the token expiry date time.
         /// </summary>
         public DateTimeOffset ExpiresOn { get; set; }
-
-        /// <summary>
-        /// Gets or sets the token expiry.
-        /// </summary>
-        public long Expiration { get; set; }
 
         /// <summary>
         /// Gets or sets the resource identifier.
