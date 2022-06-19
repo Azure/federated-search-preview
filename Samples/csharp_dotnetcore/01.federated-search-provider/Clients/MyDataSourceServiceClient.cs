@@ -18,12 +18,7 @@ namespace Microsoft.SearchProvider.Bots.Clients
     //Replace it with the logic to get data from your data source.
     public class MyDataSourceServiceClient 
     {
-        /// <summary>
-        /// Active directory authority URL which is responsible to issue token
-        /// </summary>
-        private const string activeDirAuthority = "https://login.windows.net/microsoft.onmicrosoft.com";
-
-        private const string targateApiResourceId = "https://MyApp.myCompany.com";
+       
 
         /// <summary>
         /// Performs a query based on the user's request.
@@ -46,8 +41,17 @@ namespace Microsoft.SearchProvider.Bots.Clients
             string apiToken = null;
             if (!string.IsNullOrWhiteSpace(oboToken.Token))
             {
-                // Exchange OBO token to this app OBO token
-                apiToken = aadTokenResolver.GetOnBehalfOfTokenAsync(activeDirAuthority, targateApiResourceId, oboToken.Token).ConfigureAwait(true).GetAwaiter().GetResult();
+                try
+                {
+                    // Exchange OBO token to this app OBO token
+                    apiToken = await aadTokenResolver.GetOnBehalfOfTokenAsync(Constants.Authority, Constants.TargateApiResourceId, oboToken.Token, token).ConfigureAwait(true);
+                    logger.LogInformation("Successfully exchanged token");
+                    logger.LogInformation($"Token length:{apiToken?.Length} and value is {apiToken?.Substring(0, 4)}");
+                }
+                catch(Exception ex)
+                {
+                    logger.LogError($"Got an error while doing token exchange {ex}");
+                }
             }
             return new ResponseObject { ResponseText = "This is a dummy response retrieved to this query: " + query + " and the token was " + wasTokenFound };
         }
