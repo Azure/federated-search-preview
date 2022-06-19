@@ -17,11 +17,14 @@ namespace Microsoft.SearchProvider.Bots
         /// </summary>
         private const string InvokeName = Constants.ApplicationSearchVersion;
 
+        private readonly IAadTokenResolver aadTokenResolver;
+
         private ILogger Logger { get; }
 
-        public FedSearchBot(ILogger<FedSearchBot> logger)
+        public FedSearchBot(ILogger<FedSearchBot> logger, IAadTokenResolver aadTokenResolver)
         {
             this.Logger = logger;
+            this.aadTokenResolver = aadTokenResolver;
         }
 
         public override async Task OnTurnAsync(ITurnContext turnContext, CancellationToken cancellationToken = default)
@@ -35,7 +38,7 @@ namespace Microsoft.SearchProvider.Bots
         {
             if (string.Equals(InvokeName, turnContext.Activity.Name))
             {
-                return await SearchHelper.RunFederatedSearch(turnContext, cancellationToken);
+                return await SearchHelper.RunFederatedSearch(turnContext, Logger, aadTokenResolver, cancellationToken);
             }
             else
             {
