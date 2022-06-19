@@ -37,7 +37,7 @@ namespace Microsoft.SearchProvider.Bots
         /// <returns>X509Certificate2 object</returns>
         public static X509Certificate2 GetCertificateFromPersonalStoreByThumbprint(StoreLocation storeLocation, string findValue)
         {
-            return GetCertificate(storeLocation, StoreName.My, X509FindType.FindByThumbprint, findValue);
+            return GetCertificate(storeLocation, StoreName.My, X509FindType.FindByThumbprint /*or X509FindType.FindBySubjectName*/ , findValue);
         }
 
         /// <summary>
