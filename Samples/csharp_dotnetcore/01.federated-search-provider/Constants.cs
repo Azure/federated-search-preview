@@ -1,4 +1,4 @@
-﻿//---------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
 // <copyright file="Constants.cs" company="Microsoft">
 //     Copyright (c) Microsoft. All rights reserved.
 // </copyright>
@@ -24,6 +24,29 @@ namespace Microsoft.SearchProvider.Bots
         /// Active Directory Authority
         /// </summary>
         public const string Authority = "https://login.microsoftonline.com/";
+
+        /// <summary>
+        /// Resource ID of target API which will be used to generate token which target API will allow to access
+        /// </summary>
+        public const string TargateApiResourceId = "https://MyApp.myCompany.com";
+
+        /// <summary>
+        /// MUST CHANGE TO REAL VALUE
+        /// AAD application ID which was generated while creating App on Azure
+        /// </summary>
+        public const string ActiveDirectoryClientId = "MyApp AAD ID";
+
+        /// <summary>
+        /// Location where app certificate can be found
+        /// </summary>
+        public const string  ActiveDirectoryCertificateLocation = "CurrentUser";
+
+        /// <summary>
+        /// MUST CHANGE TO REAL VALUE
+        /// Thumbprint for certificate owned by this application 
+        /// This can also be a subject name but function to retrieve certificate need to change
+        /// </summary>
+        public const string WEBSITE_LOAD_CERTIFICATES = "App certificate thumbprint";
 
         public const int MinProps = 3;
 
