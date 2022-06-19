@@ -25,7 +25,7 @@ namespace Microsoft.SearchProvider.Bots
         {
             services.AddHttpClient().AddControllers().AddNewtonsoftJson();
 
-            // Adding AAD resolver as a singleton, so thatin-memory cache for tokens can be used across multiple calls
+            // Adding AAD resolver as a singleton, so that in-memory cache for tokens can be used across multiple calls
             var aadTokenResolver = new AadTokenResolver("My Appication ID", "Application Certificate thumbprint", "Certificate location on machine");
             services.AddSingleton<IAadTokenResolver>(aadTokenResolver);
 
