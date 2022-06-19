@@ -25,6 +25,10 @@ namespace Microsoft.SearchProvider.Bots
         {
             services.AddHttpClient().AddControllers().AddNewtonsoftJson();
 
+            // Adding AAD resolver a singleton to use in memory cache for tokens
+            var aadTokenResolver = new AadTokenResolver("My Appication ID", "Application Certificate thumbprint", "Certificate location on machine");
+            services.AddSingleton<IAadTokenResolver>(aadTokenResolver);
+
             // Create the Bot Framework Adapter with error handling enabled.
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
 
