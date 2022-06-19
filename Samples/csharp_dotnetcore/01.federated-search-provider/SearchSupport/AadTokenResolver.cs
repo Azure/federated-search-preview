@@ -1,4 +1,4 @@
-﻿// <copyright file="AadTokenResolver.cs" company="Microsoft">
+// <copyright file="AadTokenResolver.cs" company="Microsoft">
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
@@ -9,6 +9,7 @@ namespace Microsoft.SearchProvider.Bots
     using System.Collections.Concurrent;
     using System.Linq;
     using System.Security.Cryptography.X509Certificates;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class AadTokenResolver: IAadTokenResolver
@@ -44,9 +45,9 @@ namespace Microsoft.SearchProvider.Bots
         }
 
         /// <inheritdoc/>
-        public async Task<string> GetOnBehalfOfTokenAsync(string authority, string resource, string token)
+        public async Task<string> GetOnBehalfOfTokenAsync(string authority, string resource, string token, CancellationToken cancelationToken=default)
         {
-            var authResult = await this.GetOrRefreshOnBehalfOfToken(authority, resource, token).ConfigureAwait(false);
+            var authResult = await this.GetOrRefreshOnBehalfOfToken(authority, resource, token, cancelationToken).ConfigureAwait(false);
             return authResult?.Token;
         }
 
@@ -67,9 +68,10 @@ namespace Microsoft.SearchProvider.Bots
         /// <param name="authority">The authority.</param>
         /// <param name="resource">The resource.</param>
         /// <param name="userToken">The user token.</param>
+        /// <param name="cancelationToken">Cancelation Token</param>
         /// <returns>Authentication result.</returns>
         /// <exception cref="AadTokenAcquisitionException">Error acquiring the AAD authentication token</exception>
-        private async Task<AuthModel> GetOrRefreshOnBehalfOfToken(string authority, string resource, string userToken)
+        private async Task<AuthModel> GetOrRefreshOnBehalfOfToken(string authority, string resource, string userToken, CancellationToken cancelationToken=default)
         {
             try
             {
@@ -94,9 +96,7 @@ namespace Microsoft.SearchProvider.Bots
                 var userAssertion = new UserAssertion(userToken, "urn:ietf:params:oauth:grant-type:jwt-bearer", upn);
                 output = await authContext.AcquireTokenAsync(resource, certCred, userAssertion).ConfigureAwait(false);
 
-#pragma warning disable SecurityIntelliSenseCS // MS Security rules violation
                 var authModel = new AuthModel(output.AccessToken, resource, output.ExpiresOn);
-#pragma warning restore SecurityIntelliSenseCS // MS Security rules violation
                 if (!string.IsNullOrWhiteSpace(upn))
                 {
                     this.tokenCache[GetCacheKey(resource, upn)] = authModel;
@@ -117,6 +117,7 @@ namespace Microsoft.SearchProvider.Bots
         /// <returns>Authentication result.</returns>
         private AuthModel CheckExisting(string authority, string resource)
         {
+            // Check if token is valid for sometime in future, this example uses token only if it is valid for next 30 seconds
             if (!this.tokenCache.TryGetValue(GetCacheKey(authority, resource), out AuthModel output) || output.ExpiresOn.AddSeconds(-TokenExpirationBufferSeconds) < DateTime.UtcNow)
             {
                 return null;
