@@ -1,9 +1,10 @@
-﻿// <copyright file="IAadTokenResolver.cs" company="Microsoft">
+// <copyright file="IAadTokenResolver.cs" company="Microsoft">
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
 namespace Microsoft.SearchProvider.Bots
 {
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -18,7 +19,8 @@ namespace Microsoft.SearchProvider.Bots
         /// <param name="authority">The authority.</param>
         /// <param name="resource">The resource.</param>
         /// <param name="token">The scope.</param>
+        /// <param name="cancelationToken">Cancelation token</param>
         /// <returns>The token value.</returns> 
-        Task<string> GetOnBehalfOfTokenAsync(string authority, string resource, string token);
+        Task<string> GetOnBehalfOfTokenAsync(string authority, string resource, string token, CancellationToken cancelationToken = default);
     }
 }
