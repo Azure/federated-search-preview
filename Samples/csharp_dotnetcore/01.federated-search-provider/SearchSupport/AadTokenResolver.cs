@@ -5,6 +5,7 @@
 namespace Microsoft.SearchProvider.Bots
 {
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
+    using Microsoft.VisualStudio.Threading;
     using System;
     using System.Collections.Concurrent;
     using System.Linq;
@@ -94,7 +95,7 @@ namespace Microsoft.SearchProvider.Bots
                 var authContext = new AuthenticationContext(authority);
                 var certCred = new ClientAssertionCertificate(this.clientId, cert);
                 var userAssertion = new UserAssertion(userToken, "urn:ietf:params:oauth:grant-type:jwt-bearer", upn);
-                output = await authContext.AcquireTokenAsync(resource, certCred, userAssertion).ConfigureAwait(false);
+                output = await authContext.AcquireTokenAsync(resource, certCred, userAssertion).WithCancellation(cancelationToken).ConfigureAwait(false);
 
                 var authModel = new AuthModel(output.AccessToken, resource, output.ExpiresOn);
                 if (!string.IsNullOrWhiteSpace(upn))
