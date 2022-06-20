@@ -24,6 +24,7 @@ namespace Microsoft.SearchProvider.Bots
 
         /// <summary>
         /// Caches tokens in memory to be used for next call
+        /// Key for cache should have a unique value representing user as token are user specific
         /// </summary>
         private readonly ConcurrentDictionary<string, AuthModel> tokenCache = new ConcurrentDictionary<string, AuthModel>();
 
@@ -53,25 +54,27 @@ namespace Microsoft.SearchProvider.Bots
         }
 
         /// <summary>
-        /// Gets the cache key.
+        /// Gets the cache key. Key formation can vary but idea should be each user should get unique key.
+        /// If process need to get more than 1 token to complete workflow adding target token resourceID will 
+        /// make token unique for different downstream APIs.
         /// </summary>
-        /// <param name="authority">The authority.</param>
-        /// <param name="resource">The resource.</param>
+        /// <param name="resourceId">The target token resource ID.</param>
+        /// <param name="uniqUserId">The unique id representing user.</param>
         /// <returns>Cache key.</returns>
-        private static string GetCacheKey(string authority, string resource)
+        private static string GetCacheKey(string resourceId, string uniqUserId)
         {
-            return authority + CacheDelimiter + resource;
+            return resourceId + CacheDelimiter + uniqUserId;
         }
 
         /// <summary>
         /// Get the refreshed token.
         /// </summary>
-        /// <param name="authority">The authority.</param>
-        /// <param name="resource">The resource.</param>
+        /// <param name="authority">The token issuing authority.</param>
+        /// <param name="resource">The target token resource ID.</param>
         /// <param name="userToken">The user token.</param>
         /// <param name="cancelationToken">Cancelation Token</param>
         /// <returns>Authentication result.</returns>
-        /// <exception cref="AadTokenAcquisitionException">Error acquiring the AAD authentication token</exception>
+        /// <exception cref="Exception">Error exception</exception>
         private async Task<AuthModel> GetOrRefreshOnBehalfOfToken(string authority, string resource, string userToken, CancellationToken cancelationToken=default)
         {
             try
@@ -113,13 +116,13 @@ namespace Microsoft.SearchProvider.Bots
         /// <summary>
         /// Checks existing token for authentication.
         /// </summary>
-        /// <param name="authority">The authority.</param>
-        /// <param name="resource">The resource.</param>
+        /// <param name="resourceId">The target token resource ID.</param>
+        /// <param name="uniqUserId">The unique id representing user.</param>
         /// <returns>Authentication result.</returns>
-        private AuthModel CheckExisting(string authority, string resource)
+        private AuthModel CheckExisting(string resourceId, string uniqUserId)
         {
             // Check if token is valid for sometime in future, this example uses token only if it is valid for next 30 seconds
-            if (!this.tokenCache.TryGetValue(GetCacheKey(authority, resource), out AuthModel output) || output.ExpiresOn.AddSeconds(-TokenExpirationBufferSeconds) < DateTime.UtcNow)
+            if (!this.tokenCache.TryGetValue(GetCacheKey(resourceId, uniqUserId), out AuthModel output) || output.ExpiresOn.AddSeconds(-TokenExpirationBufferSeconds) < DateTime.UtcNow)
             {
                 return null;
             }
@@ -127,7 +130,7 @@ namespace Microsoft.SearchProvider.Bots
         }
 
         /// <summary>
-        /// Gets the certificate.
+        /// Gets the certificate for this AAD process.
         /// </summary>
         /// <returns>An X.509 certificate.</returns>
         /// <exception cref="CertificateRetrievalException">Error retrieving the AAD authentication certificate</exception>
