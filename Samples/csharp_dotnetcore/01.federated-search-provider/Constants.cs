@@ -28,11 +28,11 @@ namespace Microsoft.SearchProvider.Bots
         /// <summary>
         /// Resource ID of target API which will be used to generate token which target API will allow to access
         /// </summary>
-        public const string TargateApiResourceId = "https://MyApp.myCompany.com";
+        public const string TargetApiResourceId = "https://MyApp.myCompany.com";
 
         /// <summary>
-        /// MUST CHANGE TO REAL VALUE
-        /// AAD application ID which was generated while creating App on Azure
+        /// Resource ID of target API which will be included in generated token.
+        /// Target API should be configured to allow your app to generate token
         /// </summary>
         public const string ActiveDirectoryClientId = "MyApp AAD ID";
 
