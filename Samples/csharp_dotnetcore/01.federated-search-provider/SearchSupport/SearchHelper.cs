@@ -82,7 +82,7 @@ namespace Microsoft.SearchProvider.Bots
             return;
         }
 
-        /// <summary>Gets the Search channel on-behalf-of token.</summary>
+        /// <summary>Gets the on-behalf-of token from Search Channel data section.</summary>
         /// <param name="activity">The invoke activity that contains the user query from the Search channel.</param>
         /// <returns>The token for your bot.</returns>
         private static SearchBotAuthenticationToken GetSearchOboToken(IInvokeActivity activity, ILogger logger)
