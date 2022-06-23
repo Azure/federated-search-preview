@@ -44,7 +44,7 @@ namespace Microsoft.SearchProvider.Bots.Clients
                 try
                 {
                     // Exchange OBO token to this app OBO token
-                    apiToken = await aadTokenResolver.GetOnBehalfOfTokenAsync(Constants.Authority, Constants.TargateApiResourceId, oboToken.Token, token).ConfigureAwait(true);
+                    apiToken = await aadTokenResolver.GetOnBehalfOfTokenAsync(Constants.Authority, Constants.TargetApiResourceId, oboToken.Token, token).ConfigureAwait(true);
                     logger.LogInformation("Successfully exchanged token");
                     logger.LogInformation($"Token length:{apiToken?.Length} and value is {apiToken?.Substring(0, 4)}");
                 }
