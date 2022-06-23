@@ -57,7 +57,7 @@ namespace Microsoft.SearchProvider.Bots
             string audience = GetClaimValueFromAuthToken(token, "aud");
             if (!acceptedAudiences.Contains(audience))
             {
-                this.Logger.LogError($"Error Details:: [TokenHelper::IsValidCortanaToken] Received token's resource ID do not match with My bot resource ID {audience}");
+                this.Logger.LogError($"Error Details:: [TokenHelper::IsValidToken] Received token's resource ID do not match with My bot resource ID {audience}");
                 return false;
             }
 
