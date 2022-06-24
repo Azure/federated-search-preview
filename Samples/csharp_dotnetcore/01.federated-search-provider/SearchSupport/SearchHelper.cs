@@ -1,4 +1,4 @@
-﻿// <copyright file="EchoBackDialog.cs" company="Microsoft">
+// <copyright file="SearchHelper.cs" company="Microsoft">
 // Copyright (c) Microsoft. All rights reserved.
 // </copyright>
 
@@ -42,6 +42,11 @@ namespace Microsoft.SearchProvider.Bots
         /// </summary>
         private const string SearchChannelId = "searchassistant";
 
+        /// <summary>
+        /// List of resource ids which are accepted in OBO token
+        /// </summary>
+        private static readonly IList<string> acceptedResourceIds = new List<string> { "SearchBotResourceId" };
+
         //This method is only for testing from Bot Emulator and in Web Chat (in Azure portal).
         public static async Task RunSearchForUser(
             ITurnContext<IMessageActivity> turnContext,
@@ -77,10 +82,10 @@ namespace Microsoft.SearchProvider.Bots
             return;
         }
 
-        /// <summary>Gets the Search channel on-behalf-of token.</summary>
+        /// <summary>Gets the on-behalf-of token from Search Channel data section.</summary>
         /// <param name="activity">The invoke activity that contains the user query from the Search channel.</param>
         /// <returns>The token for your bot.</returns>
-        private static SearchBotAuthenticationToken GetSearchOboToken(IInvokeActivity activity)
+        private static SearchBotAuthenticationToken GetSearchOboToken(IInvokeActivity activity, ILogger logger)
         {
             SearchBotAuthenticationToken token = null;
             if (activity.ChannelId == SearchChannelId)
@@ -97,6 +102,11 @@ namespace Microsoft.SearchProvider.Bots
 
                     token = listOfTokens?.Where(item => item.AuthType == AuthenticationTypes.OBOToken).FirstOrDefault();
                 }
+            }
+            TokenHelper tokenHelper = new TokenHelper(acceptedResourceIds, logger);
+            if (!tokenHelper.IsValidToken(token.Token))
+            {
+                return null;
             }
 
             return token;
@@ -127,13 +137,15 @@ namespace Microsoft.SearchProvider.Bots
         /// <remarks>This method creates the search response for the federated search provider.</remarks>
         internal static async Task<InvokeResponse> RunFederatedSearch(
             ITurnContext<IInvokeActivity> turnContext,
+            ILogger logger, 
+            IAadTokenResolver aadTokenResolver,
             CancellationToken cancellationToken = default)
         {
             IInvokeActivity activity = turnContext.Activity;
             SearchRequest request = JObject.FromObject(activity.Value).ToObject<SearchRequest>();
 
             // Use this token when you need to get information that requires user authentication.
-            var oboToken = GetSearchOboToken(activity);
+            var oboToken = GetSearchOboToken(activity, logger);
 
             //Here is identified whether the search results will be displayed in a custom vertical tab.
             bool isVertical = string.Equals("search", request.Kind, StringComparison.OrdinalIgnoreCase);
@@ -190,7 +202,7 @@ namespace Microsoft.SearchProvider.Bots
 
             //Here the data from your data source is received.            
             var MyDataSourceClient = new Clients.MyDataSourceServiceClient();
-            var responsePost = await MyDataSourceClient.MyDataSourceSearch(queryString, oboToken, cancellationToken);
+            var responsePost = await MyDataSourceClient.MyDataSourceSearch(queryString, oboToken, logger, aadTokenResolver, cancellationToken);
 
             List<SearchResult> searchResults = new();
 
